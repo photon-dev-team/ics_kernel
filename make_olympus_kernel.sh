@@ -43,8 +43,7 @@ while getopts :a:c:x:p:n:dm opts; do
 		;;
 	m)
 		MENUCONFIG=1;
-		DEFCONFIG=1;
-		DISTCLEAN=1;
+		
 		;;
 	\?)	
 		cat <<EOF
@@ -67,6 +66,7 @@ EOF
 		if [ $OPTARG == "n" ] 
 			then
 				echo "Set CM9 top dir to ${CM9_TOP}"	
+				DO_COPY=1
 			else
 				echo "Option -${OPTARG} needs an argument"
 				exit 1
@@ -95,15 +95,21 @@ if [ $MENUCONFIG -eq 1 ]
 		make menuconfig
 fi
 
-#make clean
-#make $X_ARG zImage
+make clean
 
-#make $X_ARG modules
+make $X_ARG zImage
+make $X_ARG modules
 
 
 if [ $DO_COPY -eq 1 ]
 	then
+		echo "Copyng kernel to ${CM9_TOP}/device/moto/olympus/kernel"
+		cp arch/$ARCH/boot/zImage ${CM9_TOP}/device/moto/olympus/kernel
+		touch ${CM9_TOP}/device/moto/olympus/kernel
+		echo "Copyng modules to ${CM9_TOP}/device/moto/olympus/modules/"
 		for mod in `find  .  -name "*.ko" -print `;  
 			do   cp  $mod "${CM9_TOP}/device/moto/olympus/modules/" ; done 
 fi
+
+echo Finished at `date`
 
