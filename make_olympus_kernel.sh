@@ -12,8 +12,9 @@ PLATFORM=tegra_olympus_android_defconfig
 DEFCONFIG=0
 DISTCLEAN=0
 MENUCONFIG=0
-
-while getopts :a:c:x:p:dm opts; do
+CM9_TOP="../../"
+DO_COPY=0
+while getopts :a:c:x:p:n:dm opts; do
 	case $opts in
 	a)
 		export ARCH=$OPTARG
@@ -30,6 +31,11 @@ while getopts :a:c:x:p:dm opts; do
 	p)
 		PLATFORM=$OPTARG
 		echo "Set Platform to ${OPTARG}"
+		;;
+	n)
+		CM9_TOP=$OPTARG
+		DO_COPY=1
+		echo "Set CM9 top dir to ${OPTARG}"
 		;;
 	d)	
 		DEFCONFIG=1;
@@ -53,21 +59,21 @@ while getopts :a:c:x:p:dm opts; do
 		-p <config> - default - tegra_olympus_android_defconfig
 		-d - run distclean and defconfig before make
 		-m - run distclean, defconfig, and menuconfig before make
-		
+		-n <CM9 top level directory> - copy kernel and modules to CM9 	
 EOF
 		exit 1
 		;;
 	:)
-		echo "Option -${OPTARG} needs an argument"
-		exit 1
+		if [ $OPTARG == "n" ] 
+			then
+				echo "Set CM9 top dir to ${CM9_TOP}"	
+			else
+				echo "Option -${OPTARG} needs an argument"
+				exit 1
+		fi
 		;;
 	esac
 done
-
-
-
-	
-
 
 
 
@@ -89,6 +95,15 @@ if [ $MENUCONFIG -eq 1 ]
 		make menuconfig
 fi
 
-make $X_ARG zImage
+#make clean
+#make $X_ARG zImage
 
-make $X_ARG modules
+#make $X_ARG modules
+
+
+if [ $DO_COPY -eq 1 ]
+	then
+		for mod in `find  .  -name "*.ko" -print `;  
+			do   cp  $mod "${CM9_TOP}/device/moto/olympus/modules/" ; done 
+fi
+
