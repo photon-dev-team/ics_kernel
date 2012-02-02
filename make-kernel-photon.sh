@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd kernel/tegra-temp
+cd ~/cm9/kernel/tegra-temp
 rm -R *
 cd ../..
 export PLATFORM_DIR=~/cm9
