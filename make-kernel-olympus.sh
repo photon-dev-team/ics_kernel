@@ -1,12 +1,9 @@
 #!/bin/bash
 
-cd ~/cm9/kernel/tegra-temp
-rm -R *
-cd ../..
 export PLATFORM_DIR=~/cm9
 export KERNEL_BUILD_OUT=$PLATFORM_DIR/kernel/tegra-temp
 export ARCH=arm
-export CROSS_COMPILE=arm-linux-gnueabi-
+export CROSS_COMPILE=$PLATFORM_DIR/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin/arm-eabi-
 export KERNEL_SRC=$PLATFORM_DIR/kernel/tegra
 KBUILD_BUILD_VERSION="joker-cm9-alpha"
 export KBUILD_BUILD_VERSION
