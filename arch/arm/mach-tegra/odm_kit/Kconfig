@@ -28,5 +28,14 @@ config TEGRA_ODM_DAYTONA
 config TEGRA_ODM_OLYMPUS
 	bool "Motorola OLYMPUS brassboard/phone"
 	depends on ARCH_TEGRA_2x_SOC
+config AVP_OVERCLOCK
+	bool "AVP Overclocking"
+	depends on ARCH_TEGRA
+	default n
+
+config STOCK_VOLTAGE
+	bool "stock voltage values"
+	depends on ARCH_TEGRA
+	default n
 
 endchoice

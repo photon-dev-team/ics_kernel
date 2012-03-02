@@ -85,7 +85,7 @@ NvU32 FakeShmooVmaxIndex = NVRM_VOLTAGE_STEPS - 1;
 #ifndef CONFIG_STOCK_VOLTAGE
 
 
-#define MAX_CPU_OC_FREQ (1300000)
+#define MAX_CPU_OC_FREQ (1400000)
 
 NvU32 FakeShmooVoltages[] = {
     750,
@@ -106,10 +106,10 @@ NvRmScaledClkLimits FakepScaledCpuLimits = {
 	216000,
 	312000,
     	456000,
-    	750000,
+    	800000,
     	1000000,
 	1200000,
-	1300000,
+	1400000,
     }
 };
 
@@ -272,6 +272,9 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
     // Combine AVP/System clock absolute limit with scaling V/F ladder upper
     // boundary, and set default clock range for all present modules the same
     // as for AVP/System clock
+#ifdef CONFIG_AVP_OVERCLOCK
+    AvpMaxKHz = 266400;
+#else
     AvpMaxKHz = pSKUedLimits->AvpMaxKHz;
     for (i = 0; i < pShmoo->ScaledLimitsListSize; i++)
     {
@@ -282,7 +285,7 @@ NvRmPrivClockLimitsInit(NvRmDeviceHandle hRmDevice)
             break;
         }
     }
-
+#endif //CONFIG_AVP_OVERCLOCK
     for (i = 0; i < NvRmPrivModuleID_Num; i++)
     {
         NvRmModuleInstance *inst;
