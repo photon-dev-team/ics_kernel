@@ -702,7 +702,7 @@ struct qtouch_ts_platform_data
 enum 
 {
 /* Implemented */
-	QTOUCH_IOCTL_SET_DEBUG		= 1,
+	QTOUCH_IOCTL_SET_DEBUG		= 0,
 	QTOUCH_IOCTL_GET_DEBUG,
 	QTOUCH_IOCTL_GET_VERSION,
 	QTOUCH_IOCTL_MODE,
