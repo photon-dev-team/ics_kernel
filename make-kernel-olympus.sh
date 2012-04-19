@@ -4,8 +4,8 @@ export PLATFORM_DIR=~/cm9
 export KERNEL_BUILD_OUT=$PLATFORM_DIR/kernel/tegra-temp
 export ARCH=arm
 export CROSS_COMPILE=$PLATFORM_DIR/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin/arm-eabi-
-export KERNEL_SRC=$PLATFORM_DIR/kernel/tegra
-KBUILD_BUILD_VERSION="joker-cm9-alpha"
+export KERNEL_SRC=$PLATFORM_DIR/kernel/tegra-atrix
+KBUILD_BUILD_VERSION="joker-cm9-beta"
 export KBUILD_BUILD_VERSION
 make distclean
 make -j1 -C $KERNEL_SRC O=$KERNEL_BUILD_OUT KBUILD_DEFCONFIG=tegra_olympus_cyanogenmod_defconfig defconfig menuconfig modules_prepare
