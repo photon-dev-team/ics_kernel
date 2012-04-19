@@ -43,9 +43,6 @@
 #define	USE_NVODM_STUFF	1
 */
 
-// Unsupported on .32
-#define ABS_MT_PRESSURE    0x3a
-
 #ifdef USE_NVODM_STUFF
 
 #define	NV_DEBUG	1
@@ -137,7 +134,6 @@ struct qtouch_ts_data
 
 	uint8_t				cal_check_flag;
 	unsigned long		cal_timer;
-	int prev_pressure;
 };
 
 struct qtm_id_info qtm_info;
@@ -198,7 +194,7 @@ static	char	dumpStr[100];
 static void	qtouch_dump_block(const char *fn, char *block, int blSize)
 {
 	int	i;
-	
+
 	strlcpy(dumpStr,fn,20);
 	strcat(dumpStr,": ");
 	/* dump 20 digits per line. */
@@ -212,7 +208,7 @@ static void	qtouch_dump_block(const char *fn, char *block, int blSize)
 			strlcpy(dumpStr,fn, 20);
 			strcat(dumpStr,": ");
 		}
-			
+
 		sprintf(tmp,"%02X ", block[i]);
 		strcat(dumpStr,tmp);
 	}
@@ -265,7 +261,7 @@ static void qtouch_disable_irq(int irq)
 	}
 	else
 		QTOUCH_INFO("%s: IRQ should be disabled by now.\n", __func__);
-		
+
 }
 
 static irqreturn_t qtouch_ts_irq_handler(int irq, void *dev_id)
@@ -897,7 +893,7 @@ static int qtouch_hw_init(struct qtouch_ts_data *ts)
 			goto failed2write;
 		}
 	}
-	
+
 	/* configure the one touch gesture processor */
 	obj = find_obj(ts, QTM_OBJ_PROCI_ONE_TOUCH_GESTURE_PROC);
 	if (obj && obj->entry.num_inst > 0) 
@@ -1052,7 +1048,7 @@ static int qtouch_hw_init(struct qtouch_ts_data *ts)
 					{
 						QTOUCH_INFO("%s:  Object %d: String overflow\n", __func__, object);
 					}
-	
+
 					kfree (data_buff);
 				}
 			}
@@ -1078,7 +1074,7 @@ static int do_cmd_selftest_msg(struct qtouch_ts_data *ts, struct qtm_object *obj
 {
 	struct qtm_spt_self_test_rslt *msg = _msg;
 	int	i;
-	
+
 	ts->selfStatusReport.status = msg->status;
 	for ( i = 0; i < 5; i++ )
 		ts->selfStatusReport.info[i] = msg->info[i];
@@ -1332,20 +1328,15 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 					continue;
 				if ( !ts->suspendMode )
 				{
-					/* HACK: kernel doesn't like reporting the same pressure twice */
-					if (ts->finger_data[i].z_data == ts->prev_pressure && ts->finger_data[i].z_data != 0)
-						ts->finger_data[i].z_data++;
-					ts->prev_pressure = ts->finger_data[i].z_data;
-
-					input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-							 ts->finger_data[i].z_data);
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
+							 ts->finger_data[i].z_data);
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
 							 ts->finger_data[i].w_data);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 							 ts->finger_data[i].x_data);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
 							 ts->finger_data[i].y_data);
-					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
+					input_report_key(ts->input_dev, BTN_TOUCH, ts->finger_data[i].z_data ? 1 : 0 );
 					input_mt_sync(ts->input_dev);
 				}
 			}
@@ -1363,10 +1354,13 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 				input_report_abs(ts->input_dev, ABS_Y,
 						 ts->finger_data[0].y_data);
 				input_report_abs(ts->input_dev, ABS_PRESSURE,
-						 ts->finger_data[0].down ? ts->finger_data[0].z_data : 0);
+						 ts->finger_data[0].z_data);
 				input_report_abs(ts->input_dev, ABS_TOOL_WIDTH,
 						 ts->finger_data[0].w_data);
-				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, 0);
+				if (ts->finger_data[0].down == 0)
+					input_report_key(ts->input_dev, BTN_TOUCH, 0 );
+				else
+					input_report_key(ts->input_dev, BTN_TOUCH, 1 );
 				input_sync(ts->input_dev);
 			}
 		}
@@ -1394,7 +1388,14 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 			{
 				if ( !ts->suspendMode )
 				{
-					/* Empty sync releases fingers */
+					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
+							 ts->prev_finger_data[i].w_data);
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
+							 ts->prev_finger_data[i].x_data);
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
+							 ts->prev_finger_data[i].y_data);
+					input_report_key(ts->input_dev, BTN_TOUCH, 0 );
 					input_mt_sync(ts->input_dev);
 				}
 			}
@@ -1439,7 +1440,15 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 	{
 		if (!ts->suspendMode)
 		{
-			/* Empty sync releases fingers */
+			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
+					 0);
+			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
+					 ts->finger_data[1].w_data);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
+					 ts->finger_data[1].x_data);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
+					 ts->finger_data[1].y_data);
+			input_report_key(ts->input_dev, BTN_TOUCH, 0 );
 			input_mt_sync(ts->input_dev);
 			ts->finger_data[1].x_data = 0;
 			ts->finger_data[1].y_data = 0;
@@ -1480,12 +1489,12 @@ static int do_touch_keyarray_msg(struct qtouch_ts_data *ts,
 			if (msg->keystate & bit) {
 				if (ignore_keyarray_touches)
 					return 0;
-				input_report_abs(ts->input_dev, ABS_MT_PRESSURE, 4);
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 4);
 			} else {
 				input_report_abs(ts->input_dev,
-						 ABS_MT_PRESSURE, 0);
+						 ABS_MT_TOUCH_MAJOR, 0);
 			}
-			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 4);
+			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 4);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 					 ts->pdata->key_array.keys[i].x_coord);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
@@ -1568,7 +1577,7 @@ static int	qtouch_set_bootloader_mode(struct qtouch_ts_data *ts)
 {
 	int		ret;
 	char	data[5];
-	
+
 	/* need to read 1 byte from i2c */
 	ts->client->addr = XMEGAT_BL_I2C_ADDR;
 	ts->i2cBLAddr = XMEGAT_BL_I2C_ADDR;
@@ -1632,7 +1641,7 @@ static	int	qtouch_reset_read_ptr(struct qtouch_ts_data *ts)
 	err = qtouch_set_addr(ts, obj->entry.addr);
 	return err;
 }
-	
+
 static int qtouch_process_info_block(struct qtouch_ts_data *ts)
 {
 	uint16_t our_csum = 0x0;
@@ -2138,8 +2147,6 @@ static int qtouch_ts_probe(struct i2c_client *client,
 	ts->x_delta = ts->pdata->x_delta;
 	ts->y_delta = ts->pdata->y_delta;
 
-	ts->prev_pressure = INT_MAX;
-
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) 
 	{
@@ -2242,15 +2249,17 @@ static int qtouch_ts_probe(struct i2c_client *client,
 			input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y,
 				pdata->abs_min_y, pdata->abs_max_y,
 				pdata->fuzz_y, 0);
-			input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE,
+			input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR,
 				pdata->abs_min_p, pdata->abs_max_p,
 				pdata->fuzz_p, 0);
-			input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR,
+			input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR,
 				pdata->abs_min_w, pdata->abs_max_w,
 				pdata->fuzz_w, 0);
+			input_set_capability(ts->input_dev, EV_KEY, BTN_TOUCH);
 			set_bit(EV_ABS, ts->input_dev->evbit);
 			set_bit(EV_KEY, ts->input_dev->keybit);
 			set_bit(EV_SYN, ts->input_dev->keybit);
+			set_bit(BTN_TOUCH, ts->input_dev->keybit);
 			set_bit(ABS_X, ts->input_dev->keybit);
 			set_bit(ABS_Y, ts->input_dev->keybit);
 		}
@@ -2266,12 +2275,14 @@ static int qtouch_ts_probe(struct i2c_client *client,
 
 			set_bit(EV_SYN, ts->input_dev->evbit);
 			set_bit(EV_KEY, ts->input_dev->evbit);
+			set_bit(BTN_TOUCH, ts->input_dev->keybit);
 			set_bit(KEY_HOME, ts->input_dev->keybit);
 			set_bit(KEY_BACK, ts->input_dev->keybit);
 			set_bit(KEY_MENU, ts->input_dev->keybit);
 			set_bit(BTN_2, ts->input_dev->keybit);
 			set_bit(EV_ABS, ts->input_dev->evbit);
-	
+
+			input_set_capability(ts->input_dev, EV_KEY, BTN_TOUCH);
 			input_set_capability(ts->input_dev, EV_KEY, BTN_2);
 			input_set_abs_params(ts->input_dev, ABS_X,
 				pdata->abs_min_x, pdata->abs_max_x,
@@ -2502,7 +2513,7 @@ static int qtouch_ts_resume(struct i2c_client *client)
 			__func__, i, ts->finger_data[i].down);
 		if (ts->finger_data[i].down == 0)
 			continue;
-		input_report_abs(ts->input_dev, ABS_MT_PRESSURE, 0);
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
 		input_mt_sync(ts->input_dev);
 		memset(&ts->finger_data[i], 0,
 			sizeof(struct coordinate_map));
@@ -3488,3 +3499,4 @@ MODULE_AUTHOR("Dima Zavin <dima@android.com>");
 MODULE_DESCRIPTION("Quantum OBP Touchscreen Driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("2.0");
+
